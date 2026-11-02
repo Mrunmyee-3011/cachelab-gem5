@@ -1,0 +1,24 @@
+# Move this file to .github/workflows/gem5.yml in your GitHub repo (the repo must contain the gem5-validation/ folder).
+name: gem5 validation
+on: workflow_dispatch
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential git m4 scons python3-dev zlib1g-dev \
+            libprotobuf-dev protobuf-compiler libprotoc-dev libgoogle-perftools-dev libboost-all-dev pkg-config
+      - name: Clone gem5
+        run: git clone --depth 1 --branch v25.1.0.1 https://github.com/gem5/gem5 "$HOME/gem5"
+      - name: Build gem5 (X86, Ruby MESI_Two_Level)
+        run: cd "$HOME/gem5" && scons build/X86/gem5.opt -j"$(nproc)"
+      - name: Run workloads
+        run: cd gem5-validation && GEM5="$HOME/gem5/build/X86/gem5.opt" bash run_all.sh 1000
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gem5-stats
+          path: gem5-validation/results/stats/
